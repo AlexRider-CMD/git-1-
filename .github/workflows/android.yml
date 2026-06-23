@@ -13,14 +13,37 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: set up JDK 11
+
+    - name: Check for Gradle files
+      id: gradle-check
+      run: |
+        set -e
+        # detect common Gradle/Android project files (gradlew, gradle wrapper, build scripts)
+        if [ -f gradlew ] || ls **/gradle-wrapper.properties 1> /dev/null 2>&1 || ls **/build.gradle* 1> /dev/null 2>&1 || ls **/settings.gradle* 1> /dev/null 2>&1; then
+          echo "found=true" >> $GITHUB_OUTPUT
+        else
+          echo "found=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Set up JDK 11 (with gradle cache)
+      if: steps.gradle-check.outputs.found == 'true'
       uses: actions/setup-java@v4
       with:
         java-version: '11'
         distribution: 'temurin'
         cache: gradle
 
+    - name: Set up JDK 11 (no cache)
+      if: steps.gradle-check.outputs.found != 'true'
+      uses: actions/setup-java@v4
+      with:
+        java-version: '11'
+        distribution: 'temurin'
+
     - name: Grant execute permission for gradlew
+      if: steps.gradle-check.outputs.found == 'true'
       run: chmod +x gradlew
+
     - name: Build with Gradle
+      if: steps.gradle-check.outputs.found == 'true'
       run: ./gradlew build
